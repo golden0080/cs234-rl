@@ -55,7 +55,7 @@ def policy_evaluation(P,
                 next_s = outcome[1]
                 rew = outcome[2]
                 value += prob * (float(rew) + gamma * float(v_f[next_s]))
-            delta = value - v_f[cur_s]
+            delta = abs(value - v_f[cur_s])
             if delta > max_delta:
                 max_delta = delta
             v_f[cur_s] = value
@@ -193,6 +193,44 @@ def value_iteration(P, nS, nA, gamma=0.9, max_iteration=20, tol=1e-3):
     # YOUR IMPLEMENTATION HERE #
     ############################
     # TODO(gh): implement this
+    for i in range(max_iteration):
+        max_delta = 0
+        for cur_s in range(nS):
+            max_value = None
+            max_a = -1
+            for cur_a in range(nA):
+                all_outcomes = P[cur_s][cur_a]
+                value = 0
+                for outcome in all_outcomes:
+                    prob = outcome[0]
+                    next_s = outcome[1]
+                    rew = outcome[2]
+                    value += prob * (float(rew) + gamma * float(V[next_s]))
+                if max_value is None or value > max_value:
+                    max_value = value
+                    max_a = cur_a
+            delta = abs(V[cur_s] - max_value)
+            if delta > max_delta:
+                max_delta = delta
+            V[cur_s] = max_value
+        if max_delta < 0.001:
+            break
+    for cur_s in range(nS):
+        max_value = None
+        max_a = -1
+        for cur_a in range(nA):
+            all_outcomes = P[cur_s][cur_a]
+            value = 0
+            for outcome in all_outcomes:
+                prob = outcome[0]
+                next_s = outcome[1]
+                rew = outcome[2]
+                value += prob * (float(rew) + gamma * float(V[next_s]))
+            if max_value is None or value > max_value:
+                max_value = value
+                max_a = cur_a
+        policy[cur_s] = max_a
+
     return V, policy
 
 
@@ -253,8 +291,12 @@ if __name__ == "__main__":
     print env.__doc__
     # print "Here is an example of state, action, reward, and next state"
     # example(env)
+    print "Value Iteration\n\n"
     V_vi, p_vi = value_iteration(
         env.P, env.nS, env.nA, gamma=0.9, max_iteration=20, tol=1e-3)
+    render_single(env, p_vi)
+
+    print "Policy Iteration\n\n"
     V_pi, p_pi = policy_iteration(
         env.P, env.nS, env.nA, gamma=0.9, max_iteration=20, tol=1e-3)
     render_single(env, p_pi)
