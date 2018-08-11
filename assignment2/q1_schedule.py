@@ -1,4 +1,7 @@
+import random
+
 import numpy as np
+
 from utils.test_env import EnvTest
 
 
@@ -10,11 +13,10 @@ class LinearSchedule(object):
             eps_end: end exploration
             nsteps: number of steps between the two values of eps
         """
-        self.epsilon        = eps_begin
-        self.eps_begin      = eps_begin
-        self.eps_end        = eps_end
-        self.nsteps         = nsteps
-
+        self.epsilon = eps_begin
+        self.eps_begin = eps_begin
+        self.eps_end = eps_end
+        self.nsteps = nsteps
 
     def update(self, t):
         """
@@ -25,7 +27,7 @@ class LinearSchedule(object):
         """
         ##############################################################
         """
-        TODO: modify self.epsilon such that 
+        TODO: modify self.epsilon such that
                for t = 0, self.epsilon = self.eps_begin
                for t = self.nsteps, self.epsilon = self.eps_end
                linear decay between the two
@@ -33,16 +35,20 @@ class LinearSchedule(object):
               self.epsilon should never go under self.eps_end
         """
         ##############################################################
-        ################ YOUR CODE HERE - 3-4 lines ################## 
+        ################ YOUR CODE HERE - 3-4 lines ##################
 
-        pass
+        diff = float(self.eps_end) - self.eps_begin
+        self.epsilon = max(
+            self.epsilon + t * float(diff) / self.nsteps, self.eps_end
+        )
 
+        print self.epsilon
         ##############################################################
         ######################## END YOUR CODE ############## ########
 
 
 class LinearExploration(LinearSchedule):
-    def __init__(self, env, eps_begin, eps_end, nsteps):
+    def __init__(self, env, eps_begin, eps_end, nsteps, seed=None):
         """
         Args:
             env: gym environment
@@ -51,8 +57,9 @@ class LinearExploration(LinearSchedule):
             nsteps: number of steps between the two values of eps
         """
         self.env = env
+        self.seed = seed
+        random.seed(seed)
         super(LinearExploration, self).__init__(eps_begin, eps_end, nsteps)
-
 
     def get_action(self, best_action):
         """
@@ -71,23 +78,25 @@ class LinearExploration(LinearSchedule):
                you can access the environment stored in self.env
                and epsilon with self.epsilon
 
-               you may want to use env.action_space.sample() to generate 
-               a random action        
+               you may want to use env.action_space.sample() to generate
+               a random action
         """
         ##############################################################
         ################ YOUR CODE HERE - 4-5 lines ##################
 
-        pass
+        rand = random.random()
+        if rand > self.epsilon:
+            return best_action
+        return self.env.action_space.sample()
 
         ##############################################################
         ######################## END YOUR CODE #######################
 
 
-
 def test1():
     env = EnvTest((5, 5, 1))
     exp_strat = LinearExploration(env, 1, 0, 10)
-    
+
     found_diff = False
     for i in range(10):
         rnd_act = exp_strat.get_action(0)
