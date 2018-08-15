@@ -61,7 +61,8 @@ class Linear(DQN):
         self.s = tf.placeholder(tf.uint8, shape=(batch_size, height, width, N))
         self.a = tf.placeholder(tf.int32, shape=(batch_size, ))
         self.r = tf.placeholder(tf.float32, shape=(batch_size, ))
-        self.sp = tf.placeholder(tf.uint8, shape=(batch_size, height, width, N))
+        self.sp = tf.placeholder(
+            tf.uint8, shape=(batch_size, height, width, N))
         self.done_mask = tf.placeholder(tf.bool, shape=(batch_size, ))
         self.lr = tf.placeholder(tf.float32)
 
@@ -107,8 +108,7 @@ class Linear(DQN):
 
         flatten = tf.layers.flatten(shape=state.shape)
         fc = tf.contrib.layers.fully_connected(
-            flatten, num_actions, activation_fn=None, reuse=reuse, scope=scope
-        )
+            flatten, num_actions, activation_fn=None, reuse=reuse, scope=scope)
         out = fc(state)
 
         ##############################################################
@@ -155,11 +155,9 @@ class Linear(DQN):
         ##############################################################
         ################### YOUR CODE HERE - 5-10 lines #############
         q_collection = tf.get_collection(
-            tf.GraphKeys.TRAINABLE_VARIABLES, scope=q_scope
-        )
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=q_scope)
         target_q_collection = tf.get_collection(
-            tf.GraphKeys.TRAINABLE_VARIABLES, scope=target_q_scope
-        )
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=target_q_scope)
         op = [
             tf.assign(target_q_collection[i], q_collection[i])
             for i in range(len(q_collection))
@@ -204,8 +202,12 @@ class Linear(DQN):
         """
         ##############################################################
         ##################### YOUR CODE HERE - 4-5 lines #############
-
-        pass
+        gamma = self.config.gamma
+        not_done_value = self.r + gamma * tf.reduce_max(target_q, axis=1)
+        q_samp = tf.where(self.done_mask, self.r, not_done_value)
+        actions = tf.one_host(self.a, num_actions)
+        q_new = tf.reduce_sum(tf.multiply(actions, q), axis=1)
+        self.loss = tf.reduce_mean(tf.square(q_samp - q_new))
 
         ##############################################################
         ######################## END YOUR CODE #######################
@@ -240,8 +242,15 @@ class Linear(DQN):
         """
         ##############################################################
         #################### YOUR CODE HERE - 8-12 lines #############
-
-        pass
+        opt = tf.training.AdamOptimizer(learning_rate=self.lr)
+        scope_variable = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
+        grads_vars = opt.compute_gradients(self.loss, var_list=scope_variable)
+        if self.config.grad_clip:
+            grads_vars = [(tf.clip_by_norm(val[0], self.config.clip_val),
+                           val[1]) for val in grads_vars]
+        self.train_op = opt.apply_gradients((grads, variables))
+        self.grad_norm = tf.global_norm([grads])
 
         ##############################################################
         ######################## END YOUR CODE #######################
@@ -251,14 +260,12 @@ if __name__ == '__main__':
     env = EnvTest((5, 5, 1))
 
     # exploration strategy
-    exp_schedule = LinearExploration(
-        env, config.eps_begin, config.eps_end, config.eps_nsteps
-    )
+    exp_schedule = LinearExploration(env, config.eps_begin, config.eps_end,
+                                     config.eps_nsteps)
 
     # learning rate schedule
-    lr_schedule = LinearSchedule(
-        config.lr_begin, config.lr_end, config.lr_nsteps
-    )
+    lr_schedule = LinearSchedule(config.lr_begin, config.lr_end,
+                                 config.lr_nsteps)
 
     # train model
     model = Linear(env, config)
